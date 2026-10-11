@@ -25,6 +25,7 @@ op="$1"; shift
     read)             echo "addr=$1" ;;
     spawn_part)       echo "ptid=$1"; echo "site=${2:-Arm_R}" ;;
     add_money|add_spirit|inf_dur|inf_ammo|inf_stamina) echo "value=$1" ;;
+    add_currency)     echo "which=$1"; echo "value=$2" ;;
     vslot)            echo "cls=$1"; echo "off=$2" ;;
   esac
 } > "$RPC/cmd.tmp"

@@ -490,10 +490,47 @@ static void TabCheats() {
         ImGui::TextColored(kMuted, "%s", ue3::CheatStats().c_str());
 
     Heading("Currency");
-    if (ImGui::Button("+100,000 Kill Coins", ImVec2(200, 0))) ue3::QueueAddMoney(100000);
-    ImGui::SameLine();
-    if (ImGui::Button("+100,000 SPLithium", ImVec2(200, 0))) ue3::QueueAddSpirit(100000);
-    Hint("The game caps each at 500,000; anything above is cut back.");
+    static int amount = 100000;
+    ImGui::SetNextItemWidth(170);
+    if (ImGui::InputInt("##amount", &amount, 1000, 100000)) amount = (std::max)(1, (std::min)(amount, 99999999));
+    static const struct { const char* label; int value; } kPresets[] = {
+        { "1K", 1000 }, { "100K", 100000 }, { "1M", 1000000 }, { "10M", 10000000 } };
+    for (const auto& pr : kPresets) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton(pr.label)) amount = pr.value;
+    }
+    static const struct { ue3::Currency c; const char* desc; } kRows[] = {
+        { ue3::CUR_KILLCOINS,  "Carried by your current fighter" },
+        { ue3::CUR_SPLITHIUM,  "Carried by your current fighter" },
+        { ue3::CUR_BANK,       "Kill Coins stored in your Buffalo Bank" },
+        { ue3::CUR_TANK,       "SPLithium stored in your SPLithium Tank" },
+        { ue3::CUR_DEATHMETAL, "Premium currency" },
+        { ue3::CUR_BLOODNIUM,  "Max 999,999" },
+        { ue3::CUR_TDM,        "Tokyo Death Metro points" },
+    };
+    if (ImGui::BeginTable("currency", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("name", ImGuiTableColumnFlags_WidthFixed, 140);
+        ImGui::TableSetupColumn("desc", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("add", ImGuiTableColumnFlags_WidthFixed, 150);
+        for (const auto& row : kRows) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(ue3::CurrencyName(row.c));
+            ImGui::TableNextColumn();
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextColored(kMuted, "%s", row.desc);
+            ImGui::TableNextColumn();
+            ImGui::PushID((int)row.c);
+            char label[48];
+            snprintf(label, sizeof label, "+%d", amount);
+            if (ImGui::Button(label, ImVec2(-1, 0))) ue3::QueueAddCurrency(row.c, amount);
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    Hint("Added straight into the game's own records, so it is saved normally. Each currency is capped at the "
+         "game's limit (Bank and Tank limits grow with their level); the result shows in the status line.");
 }
 
 static void TabItems() {

@@ -235,10 +235,13 @@ static void HandleCommand(const std::string& cmd) {
         bool ok = ue3::QueuePartEquip(ToWide(site), ToWide(ptid));
         body = std::string(ok ? "status=ok" : "status=err") + "\nop=spawn_part\nqueued=" + ptid + " site=" + site +
                "\nbridge=" + ue3::Status() + "\n";
-    } else if (op == "add_money" || op == "add_spirit") {
+    } else if (op == "add_currency" || op == "add_money" || op == "add_spirit") {
+        // add_currency: which = 0 Kill Coins, 1 SPLithium, 2 Bank, 3 Tank, 4 Death Metals, 5 Bloodnium, 6 TDM
         int amt = atoi(GetVal(cmd, "value").c_str());
-        if (op == "add_money") ue3::QueueAddMoney(amt); else ue3::QueueAddSpirit(amt);
-        body = "status=ok\nop=" + op + "\nqueued=" + std::to_string(amt) + "\n";
+        int which = op == "add_money" ? 0 : op == "add_spirit" ? 1 : atoi(GetVal(cmd, "which").c_str());
+        if (which < 0 || which >= ue3::CUR_COUNT) { WriteResult(id, "status=err\nmsg=which must be 0..6\n"); g_lastId = id; return; }
+        ue3::QueueAddCurrency((ue3::Currency)which, amt);
+        body = "status=ok\nop=" + op + "\ncurrency=" + ue3::CurrencyName((ue3::Currency)which) + "\nqueued=" + std::to_string(amt) + "\n";
     } else if (op == "unfreeze_all") {
         EnterCriticalSection(&g_cs); g_freezes.clear(); LeaveCriticalSection(&g_cs);
         body = "status=ok\nop=unfreeze_all\nfrozen=0\n";

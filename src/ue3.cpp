@@ -56,7 +56,7 @@ namespace {
     DWORD gInstallTick = 0;
 
     // ---- requests (game thread) ----
-    enum Kind { PART_EQUIP, ADD_MONEY, ADD_SPIRIT };
+    enum Kind { PART_EQUIP, ADD_CURRENCY };
     struct Request { Kind kind; std::wstring a, b; int n; };
     std::mutex gMu;
     std::deque<Request> gQueue;
@@ -76,7 +76,36 @@ namespace {
     struct Fn { uintptr_t ptr; int cheat; };
     Fn gCheatFns[32];
     int gCheatFnCount = 0;
-    uintptr_t gFnPartEquip = 0, gFnAddMoney = 0, gFnAddSpirit = 0;
+    uintptr_t gFnPartEquip = 0;
+
+    // ---- currencies: BrgUserData natives (they write the game's own user-data store, so changes are saved) ----
+    // Each add = Get current -> clamp(current + amount, 0, limit) -> Set. Carried Kill Coins/SPLithium use the
+    // per-fighter Add*/Get* natives with cindex = -1 (current fighter).
+    struct CurrencySpec {
+        const char* label;
+        const char* getFn;       // int Get...([optional int cindex])
+        const char* setFn;       // bool Set...(int value [, optional int cindex])   (or Add... when isAdd)
+        const char* limitFn;     // int Get...Limit()   (nullptr: fixed cap below)
+        int fixedCap;
+        bool perFighter;         // takes optional cindex (= -1)
+        bool isAdd;              // setFn adds a delta instead of setting a value
+    };
+    const CurrencySpec kCurrencies[ue3::CUR_COUNT] = {
+        { "Kill Coins",     "GetMoney",         "AddMoney",         nullptr,              0,        true,  true  },
+        { "SPLithium",      "GetSpirit",        "AddSpirit",        nullptr,              0,        true,  true  },
+        { "Bank funds",     "GetSafeMoney",     "SetSafeMoney",     "GetSafeLimit",       0,        false, false },
+        { "SPLithium Tank", "GetSafeSpirit",    "SetSafeSpirit",    "GetSpiritTankLimit", 0,        false, false },
+        { "Death Metals",   "GetMedal",         "SetMedal",         nullptr,              99999999, false, false },
+        { "Bloodnium",      "GetUserBloodnium", "SetUserBloodnium", "GetBloodniumLimit",  999999,   false, false },
+        { "TDM Points",     "GetTdmPoint",      "SetTdmPoint",      nullptr,              99999999, false, false },
+    };
+    struct CurrencyFns { uintptr_t get, set, limit; };
+    CurrencyFns gCurFns[ue3::CUR_COUNT] = {};
+    int gCurNameIds[ue3::CUR_COUNT][3];
+    const char* CurFnName(int c, int f) {
+        const CurrencySpec& cs = kCurrencies[c];
+        return f == 0 ? cs.getFn : f == 1 ? cs.setFn : cs.limitFn;
+    }
     int gOffCommonPawnPawn = -1;       // BrgCommonPawn_CustomChara.mPawn
     int gOffWeaponOwnerPawn = -1;      // BrgWeapon_Base.mOwnerPawn
     int gOffWorldInfo = -1;            // Actor.WorldInfo
@@ -158,13 +187,13 @@ namespace {
 
     // FName indices of the names we care about (one GNames pass instead of decoding every object's name).
     enum NameId { N_WeaponDur, N_WeaponShotDur, N_ArmorDur, N_BulletCons, N_StaminaCons, N_DebugPartEquip,
-                  N_AddMoney, N_AddSpirit, N_mPawn, N_mOwnerPawn, N_WorldInfo, N_Game, N_mUserData,
+                  N_mPawn, N_mOwnerPawn, N_WorldInfo, N_Game, N_mUserData,
                   N_mbDeadInfoOutputCancel, N_PlayerTick, N_COUNT };
     const char* kNames[N_COUNT] = { "WeaponDurabilityDown", "WeaponShotDurabilityDown", "ArmorDurabilityDown",
-                                    "BulletConsumption", "StaminaConsumption", "DebugPartEquip", "AddMoney",
-                                    "AddSpirit", "mPawn", "mOwnerPawn", "WorldInfo", "Game", "mUserData",
+                                    "BulletConsumption", "StaminaConsumption", "DebugPartEquip",
+                                    "mPawn", "mOwnerPawn", "WorldInfo", "Game", "mUserData",
                                     "mbDeadInfoOutputCancel", "PlayerTick" };
-    int gNameIds[N_COUNT] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+    int gNameIds[N_COUNT] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
     // Property offsets: exact declaring class preferred; a same-family parent class is accepted as a fallback
     // (an inherited property keeps the parent's offset).
@@ -194,20 +223,28 @@ namespace {
         }
         if (!EnsureObjects()) { SetStatus("cheats: GObjects not found yet (retrying)"); return; }
 
+        static bool curInit = false;
+        if (!curInit) { for (auto& row : gCurNameIds) for (int& v : row) v = -1; curInit = true; }
         bool missing = false;
         for (int k = 0; k < N_COUNT; ++k) missing |= gNameIds[k] < 0;
+        for (int c = 0; c < ue3::CUR_COUNT; ++c)
+            for (int f = 0; f < 3; ++f) missing |= CurFnName(c, f) && gCurNameIds[c][f] < 0;
         if (missing) {
             TArrayRaw* gn = GNames();
             char nb[64];
             for (int i = 0; i < gn->Num; ++i) {
                 if (!NameOf(i, nb, sizeof nb)) continue;
                 for (int k = 0; k < N_COUNT; ++k) if (gNameIds[k] < 0 && !strcmp(nb, kNames[k])) gNameIds[k] = i;
+                for (int c = 0; c < ue3::CUR_COUNT; ++c)
+                    for (int f = 0; f < 3; ++f)
+                        if (CurFnName(c, f) && gCurNameIds[c][f] < 0 && !strcmp(nb, CurFnName(c, f))) gCurNameIds[c][f] = i;
             }
         }
+        CurrencyFns cur[ue3::CUR_COUNT] = {};
         gNamePlayerTick = gNameIds[N_PlayerTick];
 
         Fn fns[32]; int nf = 0;
-        uintptr_t partEquip = 0, addMoney = 0, addSpirit = 0;
+        uintptr_t partEquip = 0;
         int offs[6] = { -1, -1, -1, -1, -1, -1 };
         bool exact[6] = {};
         char cls[96], outer[96];
@@ -215,6 +252,18 @@ namespace {
             uintptr_t obj = 0;
             if (!ReadPtr((uintptr_t)gObjects->Data + (uintptr_t)i * 8, &obj) || !obj) continue;
             int nidx = -1; if (!ReadI32(obj + OFF_NAME, &nidx) || nidx < 0) continue;
+            bool curHit = false;
+            for (int c = 0; c < ue3::CUR_COUNT && !curHit; ++c)
+                for (int f = 0; f < 3; ++f) curHit |= gCurNameIds[c][f] == nidx;
+            if (curHit && ClassName(obj, cls, sizeof cls) && !strcmp(cls, "Function") &&
+                OuterName(obj, outer, sizeof outer) && !strcmp(outer, "BrgUserData")) {
+                for (int c = 0; c < ue3::CUR_COUNT; ++c) {
+                    if (gCurNameIds[c][0] == nidx) cur[c].get = obj;
+                    if (gCurNameIds[c][1] == nidx) cur[c].set = obj;
+                    if (gCurNameIds[c][2] == nidx) cur[c].limit = obj;
+                }
+                continue;
+            }
             int k = 0; for (; k < N_COUNT; ++k) if (gNameIds[k] == nidx) break;
             if (k == N_COUNT || k == N_PlayerTick) continue;
             if (!ClassName(obj, cls, sizeof cls) || !OuterName(obj, outer, sizeof outer)) continue;
@@ -235,8 +284,6 @@ namespace {
             else if (k == N_BulletCons && !strncmp(outer, "BrgWeapon_", 10)) cheat = ue3::AMMO;
             else if (k == N_StaminaCons && !strcmp(outer, "BrgPawn_CustomCharaPlayer")) cheat = ue3::STAMINA;
             else if (k == N_DebugPartEquip && !strcmp(outer, "BrgGameInfo")) partEquip = obj;
-            else if (k == N_AddMoney && !strcmp(outer, "BrgUserData")) addMoney = obj;
-            else if (k == N_AddSpirit && !strcmp(outer, "BrgUserData")) addSpirit = obj;
             if (cheat && nf < 32) fns[nf++] = { obj, cheat };
         }
         int dur = 0, ammo = 0, stam = 0;
@@ -245,7 +292,8 @@ namespace {
         // Publish: function table first, count last (the ProcessInternal hook reads count then entries).
         for (int i = 0; i < nf; ++i) gCheatFns[i] = fns[i];
         gCheatFnCount = nf;
-        gFnPartEquip = partEquip; gFnAddMoney = addMoney; gFnAddSpirit = addSpirit;
+        gFnPartEquip = partEquip;
+        for (int c = 0; c < ue3::CUR_COUNT; ++c) gCurFns[c] = cur[c];
         for (int p = 0; p < 6; ++p) *kProps[p].out = offs[p];
         gScanned = true;
         bool ok = dur == 3 && ammo >= 1 && stam == 1 && gOffCommonPawnPawn > 0 && gOffWeaponOwnerPawn > 0;
@@ -357,16 +405,42 @@ namespace {
                   r.b.c_str(), r.a.c_str());
     }
 
-    void RunAddCurrency(const Request& r, uintptr_t pc) {
-        const char* fname = r.kind == ADD_MONEY ? "Kill Coins" : "SPLithium";
-        uintptr_t fn = r.kind == ADD_MONEY ? gFnAddMoney : gFnAddSpirit;
-        uintptr_t ud = LiveUserData(pc);
-        if (!fn || !ud) { SetStatus("%s failed: %s", fname, fn ? "game world not ready" : "function not found"); return; }
+    // int Get...([cindex]): the return value follows the optional cindex when present.
+    bool CallGetInt(uintptr_t ud, uintptr_t fn, bool perFighter, int* out) {
         alignas(16) unsigned char parms[kParmBytes] = {};
-        *(int*)(parms + 0) = r.n;      // int amount
-        *(int*)(parms + 4) = -1;       // int cindex = -1 (current fighter)
-        bool ok = CallPE(ud, fn, parms);
-        SetStatus(ok ? "+%d %s (now %d)" : "+%d %s FAULTED - cheats paused, save & restart", r.n, fname, *(int*)(parms + 8));
+        if (perFighter) *(int*)parms = -1;
+        if (!CallPE(ud, fn, parms)) return false;
+        *out = *(int*)(parms + (perFighter ? 4 : 0));
+        return true;
+    }
+
+    void RunAddCurrency(const Request& r, uintptr_t pc) {
+        if (r.n < 0 || r.n >= ue3::CUR_COUNT) return;
+        const CurrencySpec& cs = kCurrencies[r.n];
+        const CurrencyFns& fn = gCurFns[r.n];
+        int amount = _wtoi(r.a.c_str());
+        uintptr_t ud = LiveUserData(pc);
+        if (!fn.get || !fn.set || !ud) {
+            SetStatus("%s failed: %s", cs.label, ud ? "game function not found" : "game world not ready");
+            return;
+        }
+        int before = 0, limit = cs.fixedCap;
+        if (!CallGetInt(ud, fn.get, cs.perFighter, &before)) { SetStatus("%s FAULTED - cheats paused, save & restart", cs.label); return; }
+        if (fn.limit) {
+            int l = 0;
+            if (CallGetInt(ud, fn.limit, false, &l) && l > 0) limit = l;
+        }
+        long long want = (long long)before + amount;
+        if (limit > 0 && want > limit) want = limit;
+        if (want < 0) want = 0;
+        alignas(16) unsigned char parms[kParmBytes] = {};
+        *(int*)(parms + 0) = cs.isAdd ? (int)(want - before) : (int)want;
+        if (cs.perFighter) *(int*)(parms + 4) = -1;
+        if (!CallPE(ud, fn.set, parms)) { SetStatus("%s FAULTED - cheats paused, save & restart", cs.label); return; }
+        int after = before;
+        CallGetInt(ud, fn.get, cs.perFighter, &after);
+        if (limit > 0) SetStatus("%s: %d -> %d (game limit %d)", cs.label, before, after, limit);
+        else           SetStatus("%s: %d -> %d", cs.label, before, after);
     }
 
     bool IsPlayerTick(void* fn) {
@@ -444,8 +518,12 @@ namespace ue3 {
         Enqueue({ PART_EQUIP, site, ptid, 0 }, "try-on");
         return true;
     }
-    void QueueAddMoney(int amount)  { Enqueue({ ADD_MONEY, L"", L"", amount }, "Kill Coins"); }
-    void QueueAddSpirit(int amount) { Enqueue({ ADD_SPIRIT, L"", L"", amount }, "SPLithium"); }
+    void QueueAddCurrency(Currency c, int amount) {
+        if (c < 0 || c >= CUR_COUNT) return;
+        Enqueue({ ADD_CURRENCY, std::to_wstring(amount), L"", (int)c }, kCurrencies[c].label);
+    }
+    const char* CurrencyName(Currency c) { return (c >= 0 && c < CUR_COUNT) ? kCurrencies[c].label : "?"; }
+    bool CurrencyAvailable(Currency c) { return c >= 0 && c < CUR_COUNT && gCurFns[c].get && gCurFns[c].set; }
 
     void SetCheat(Cheat c, bool on) {
         if (on && gFaulted) return;
