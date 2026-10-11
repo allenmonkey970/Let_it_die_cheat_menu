@@ -1,0 +1,19 @@
+# Build output
+build/
+*.obj
+*.exp
+*.lib
+*.pdb
+*.dll
+
+# Runtime files (file RPC between the agent and the DLL)
+rpc/
+
+# Extracted game assets: generated from your own install by tools/build_item_index.py.
+# Never commit or redistribute them.
+assets/*
+!assets/README.txt
+
+# Python
+__pycache__/
+*.pyc
