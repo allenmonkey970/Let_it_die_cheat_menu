@@ -5,6 +5,12 @@ An in-game mod menu for the **offline edition of LET IT DIE** (v5.0.1, Windows x
 
 Press **Insert** in game to open or close the menu.
 
+## Demo
+
+https://github.com/user-attachments/assets/6b4da0d6-ae3b-4032-9eea-d55e5192b7b8
+
+Full-quality download: [`media/LET_IT_DIE_mod_menu.mp4`](media/LET_IT_DIE_mod_menu.mp4).
+
 ## Features
 - **Cheats tab**
   - Infinite durability (weapons and armor).
