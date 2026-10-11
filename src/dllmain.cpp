@@ -508,11 +508,12 @@ static void TabCheats() {
         { ue3::CUR_BANK,       "Kill Coins stored in your Buffalo Bank" },
         { ue3::CUR_TANK,       "SPLithium stored in your SPLithium Tank" },
         { ue3::CUR_DEATHMETAL, "Premium currency" },
-        { ue3::CUR_BLOODNIUM,  "Max 999,999" },
+        { ue3::CUR_BLOODNIUM_FIGHTER, "Your current fighter's - used for level-ups" },
+        { ue3::CUR_BLOODNIUM_ACCOUNT, "Account-wide - used in the Bloodnium shop" },
         { ue3::CUR_TDM,        "Tokyo Death Metro points" },
     };
     if (ImGui::BeginTable("currency", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
-        ImGui::TableSetupColumn("name", ImGuiTableColumnFlags_WidthFixed, 140);
+        ImGui::TableSetupColumn("name", ImGuiTableColumnFlags_WidthFixed, 165);
         ImGui::TableSetupColumn("desc", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableSetupColumn("add", ImGuiTableColumnFlags_WidthFixed, 150);
         for (const auto& row : kRows) {

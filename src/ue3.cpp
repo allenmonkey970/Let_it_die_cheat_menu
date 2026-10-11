@@ -96,8 +96,9 @@ namespace {
         { "Bank funds",     "GetSafeMoney",     "SetSafeMoney",     "GetSafeLimit",       0,        false, false },
         { "SPLithium Tank", "GetSafeSpirit",    "SetSafeSpirit",    "GetSpiritTankLimit", 0,        false, false },
         { "Death Metals",   "GetMedal",         "SetMedal",         nullptr,              99999999, false, false },
-        { "Bloodnium",      "GetUserBloodnium", "SetUserBloodnium", "GetBloodniumLimit",  999999,   false, false },
+        { "Bloodnium (account)", "GetUserBloodnium", "SetUserBloodnium", "GetBloodniumLimit", 999999, false, false },
         { "TDM Points",     "GetTdmPoint",      "SetTdmPoint",      nullptr,              99999999, false, false },
+        { "Bloodnium",      "GetBloodnium",     "AddBloodnium",     "GetBloodniumLimit",  999999,   true,  true  },
     };
     struct CurrencyFns { uintptr_t get, set, limit; };
     CurrencyFns gCurFns[ue3::CUR_COUNT] = {};

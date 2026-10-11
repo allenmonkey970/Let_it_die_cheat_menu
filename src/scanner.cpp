@@ -236,10 +236,11 @@ static void HandleCommand(const std::string& cmd) {
         body = std::string(ok ? "status=ok" : "status=err") + "\nop=spawn_part\nqueued=" + ptid + " site=" + site +
                "\nbridge=" + ue3::Status() + "\n";
     } else if (op == "add_currency" || op == "add_money" || op == "add_spirit") {
-        // add_currency: which = 0 Kill Coins, 1 SPLithium, 2 Bank, 3 Tank, 4 Death Metals, 5 Bloodnium, 6 TDM
+        // add_currency: which = 0 Kill Coins, 1 SPLithium, 2 Bank, 3 Tank, 4 Death Metals, 5 Bloodnium (account),
+        //               6 TDM, 7 Bloodnium (current fighter, used for level-ups)
         int amt = atoi(GetVal(cmd, "value").c_str());
         int which = op == "add_money" ? 0 : op == "add_spirit" ? 1 : atoi(GetVal(cmd, "which").c_str());
-        if (which < 0 || which >= ue3::CUR_COUNT) { WriteResult(id, "status=err\nmsg=which must be 0..6\n"); g_lastId = id; return; }
+        if (which < 0 || which >= ue3::CUR_COUNT) { WriteResult(id, "status=err\nmsg=which must be 0..7\n"); g_lastId = id; return; }
         ue3::QueueAddCurrency((ue3::Currency)which, amt);
         body = "status=ok\nop=" + op + "\ncurrency=" + ue3::CurrencyName((ue3::Currency)which) + "\nqueued=" + std::to_string(amt) + "\n";
     } else if (op == "unfreeze_all") {

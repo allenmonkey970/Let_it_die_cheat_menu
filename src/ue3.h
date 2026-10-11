@@ -10,7 +10,11 @@ namespace ue3 {
     // BrgGameInfo.DebugPartEquip (temporary). site: Head|Arm_R|Arm_L|Body|Legs; ptid must be PT_*. false = rejected.
     bool QueuePartEquip(const std::wstring& site, const std::wstring& ptid);
     // Currencies (BrgUserData natives, saved by the game): adds `amount`, clamped to the game's own limit.
-    enum Currency { CUR_KILLCOINS, CUR_SPLITHIUM, CUR_BANK, CUR_TANK, CUR_DEATHMETAL, CUR_BLOODNIUM, CUR_TDM, CUR_COUNT };
+    // Bloodnium has two pools: the current fighter's (spent on level-ups; the native stat-distribute check only
+    // counts this one) and the account's (Bloodnium shop). The stat screen shows their sum, so adding only to the
+    // account pool lets the UI allow an upgrade the native check then rejects with an assert (crash).
+    enum Currency { CUR_KILLCOINS, CUR_SPLITHIUM, CUR_BANK, CUR_TANK, CUR_DEATHMETAL, CUR_BLOODNIUM_ACCOUNT, CUR_TDM,
+                    CUR_BLOODNIUM_FIGHTER, CUR_COUNT };
     void QueueAddCurrency(Currency c, int amount);
     const char* CurrencyName(Currency c);
     bool CurrencyAvailable(Currency c);     // its game functions were found
