@@ -20,6 +20,7 @@
 #include <windows.h>
 #include <atomic>
 #include <cstdarg>
+#include <climits>
 #include <cstdint>
 #include <cstdio>
 #include <deque>
@@ -40,6 +41,11 @@ namespace {
     constexpr int FR_NODE = 0x14;
     constexpr size_t kParmBytes = 512;    // ProcessEvent copies ParmsSize bytes in AND back out: never undersize
     constexpr int kMaxWorldResolves = 10;
+    // Native save-store soul record (static object). The stat-distribute check (FUN_141366480 -> FUN_14133f7c0)
+    // takes its Bloodnium pool from soul+0xB4 plus the current chara record +0x5C, and spends from those - not
+    // from the BrgUserData object the UI reads. So a UI-side SetUserBloodnium alone crashes the level-up.
+    constexpr uintptr_t RVA_NATIVE_SOUL = 0xF89EF80;
+    constexpr int OFF_SOUL_BLOODNIUM = 0xB4;
     constexpr DWORD kNoTickFallbackMs = 10000;
 
     using PE_t = void(__fastcall*)(void*, void*, void*, void*);
@@ -96,7 +102,7 @@ namespace {
         { "Bank funds",     "GetSafeMoney",     "SetSafeMoney",     "GetSafeLimit",       0,        false, false },
         { "SPLithium Tank", "GetSafeSpirit",    "SetSafeSpirit",    "GetSpiritTankLimit", 0,        false, false },
         { "Death Metals",   "GetMedal",         "SetMedal",         nullptr,              99999999, false, false },
-        { "Bloodnium (account)", "GetUserBloodnium", "SetUserBloodnium", "GetBloodniumLimit", 999999, false, false },
+        { "Bloodnium",      "GetUserBloodnium", "SetUserBloodnium", "GetBloodniumLimit",  999999,   false, false },
         { "TDM Points",     "GetTdmPoint",      "SetTdmPoint",      nullptr,              99999999, false, false },
         { "Bloodnium",      "GetBloodnium",     "AddBloodnium",     "GetBloodniumLimit",  999999,   true,  true  },
     };
@@ -431,6 +437,17 @@ namespace {
             int l = 0;
             if (CallGetInt(ud, fn.limit, false, &l) && l > 0) limit = l;
         }
+        // Bloodnium: the native soul field must hold exactly what the game just reported, which proves the offset
+        // before we write it.
+        int nativeBefore = INT_MIN;
+        bool nativeOk = false;
+        if (r.n == ue3::CUR_BLOODNIUM_ACCOUNT) {
+            nativeOk = ReadI32(gBase + RVA_NATIVE_SOUL + OFF_SOUL_BLOODNIUM, &nativeBefore) && nativeBefore == before;
+            if (!nativeOk) {            // change nothing: a UI-only raise is exactly what crashes the level-up
+                SetStatus("Bloodnium NOT added: native record mismatch (game=%d, native=%d) - please report", before, nativeBefore);
+                return;
+            }
+        }
         long long want = (long long)before + amount;
         if (limit > 0 && want > limit) want = limit;
         if (want < 0) want = 0;
@@ -440,6 +457,8 @@ namespace {
         if (!CallPE(ud, fn.set, parms)) { SetStatus("%s FAULTED - cheats paused, save & restart", cs.label); return; }
         int after = before;
         CallGetInt(ud, fn.get, cs.perFighter, &after);
+        if (r.n == ue3::CUR_BLOODNIUM_ACCOUNT)            // verified above: mirror into the native store
+            WriteI32(gBase + RVA_NATIVE_SOUL + OFF_SOUL_BLOODNIUM, after);
         if (limit > 0) SetStatus("%s: %d -> %d (game limit %d)", cs.label, before, after, limit);
         else           SetStatus("%s: %d -> %d", cs.label, before, after);
     }
