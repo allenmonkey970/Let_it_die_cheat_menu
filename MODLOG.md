@@ -4,7 +4,7 @@ Working journal (reverse-engineering skill). Append facts as verified. Never com
 
 ## Target
 - Game: **LET IT DIE: Offline Edition**, PC/Steam (cracked RUNE repack), AppId 794600.
-- Install: `C:\Users\antho\Downloads\LET.IT.DIE-SteamRIP.com\LET.IT.DIE`
+- Install: `<game>`
 - Game exe: `Binaries\Win64\BrgGame-Steam.exe` (x64, PE link ts 2026-08-31).
 - Engine: **Unreal Engine 3** ("BrgEngine", GungHo/Grasshopper fork). Native C++ + UnrealScript.
 - Version: **5.0.1** (`masters.db master_const_str CLIENT_VERSION`; `TITLE_VERSION = 5.0.1.0.0 - 1.85`).
@@ -69,7 +69,7 @@ refuse this install. Chosen approach: build cheats DIRECTLY (route 2), no manage
 - M0 [x] **DONE 2026-10-09.** Overlay infra: dinput8 proxy + MinHook + Dear ImGui(DX9) hooking EndScene;
   INSERT toggles a menu drawn over the live game. Verified in game (shots/02_overlay.png): menu renders,
   Renderer=D3D9, 59.9 FPS. Injection confirmed (our DINPUT8.dll loaded from Binaries\Win64, forwards to
-  System32). Build: `C:\Users\antho\lid-overlay-mod\build.bat` -> build\dinput8.dll (x64, /MT, 515 KB).
+  System32). Build: `<repo>\build.bat` -> build\dinput8.dll (x64, /MT, 515 KB).
   Deploy: copy to Binaries\Win64\dinput8.dll. Toggle key: VK_INSERT (0x2D).
 - M0.5 [x] **Borderless window** toggle added to overlay. NOTE: the game's "windowed" 1920x1080 mode is
   ALREADY borderless by default — window style 0x14000000 (no WS_CAPTION/THICKFRAME/POPUP) at (0,0)
@@ -100,7 +100,7 @@ refuse this install. Chosen approach: build cheats DIRECTLY (route 2), no manage
 - [ ] VERIFY IN GAME: durability doesn't drop after many hits; gun shows huge ammo; shop/craft free.
 
 ## SAVE FORMAT (reverse-engineered 2026-10-10) — the real fix for owned gear + money
-DB edits DON'T affect owned gear/money: those are cached in the SAVE. Save = `Savedata\76561197960271872.sav`.
+DB edits DON'T affect owned gear/money: those are cached in the SAVE. Save = `Savedata\<steamid>.sav`.
 Format:
 - Header (16 bytes): `"BRG\0"` + version u32(=2) + total_uncompressed_size u32(LE) + `"ZLIB"`.
 - Body: repeated chunks `[usize u32][csize u32][zlib stream of csize bytes]`; chunks concat = one big JSON.
@@ -119,7 +119,7 @@ Backup the .sav first (lid-savedata + a dated copy).
 ## Save editor (lid_save.py codec + edit) — 2026-10-10
 - Codec round-trips exactly (decode(encode(jb))==jb). Only serialize diff = 6 pause floats 0.0000->0.0 (harmless).
 - Applied: free_money=999999999, spirit=999999999; all 189 parts dur=9999999; 16 ranged rest=spare=9999.
-- Backups: Savedata\76561197960271872.sav.pre-saveedit + um backup lid-savedata (20261010-124454).
+- Backups: Savedata\<steamid>.sav.pre-saveedit + um backup lid-savedata (20261010-124454).
 - [x] VERIFIED IN GAME 2026-10-10 (shots/35,36): save loaded (fighter Adolph Lv11), ammo slot 9999/9999,
   durability bars full. Shop currency HUD: Kill Coins 500000/500000, SPLithium 500000/500000.
   **DISCOVERY: both currencies hard-cap at 500,000** — my 999999999 clamped to 500000 on load. So "max money"
@@ -132,7 +132,7 @@ Tools installed: Ghidra 12.1.4 at `C:\ghidra_12.1.4_PUBLIC`; Temurin JDK 21 at `
 Env persisted: GHIDRA_INSTALL_DIR, JAVA_HOME (for REA after restart + headless). REA MCP tools still need a
 Claude Code RESTART to be callable; using Ghidra HEADLESS directly (no restart needed).
 Headless analysis of BrgGame-Steam.exe running in bg (task b6qf5oov1), postScript FindLidTargets.py,
-Ghidra project C:\lid-ghidra\lidproj.
+Ghidra project <ghidra-work>\lidproj.
 
 KEY LEAD — binary is NOT stripped of UnrealScript names (exec* native thunks present as strings):
 - Inventory/add-item: `UBrgInventoryItemStore`, `AInventoryManagerexecInventoryActors`,
@@ -149,9 +149,9 @@ a fresh GUID + ptid/itemid from masters.db. Reliable; requires reload. PNG picke
 
 ## Ghidra results (2026-10-10)
 - Ghidra 12 has NO Jython: Python scripts need PyGhidra. Use Java GhidraScripts (scripts/*.java) with
-  `analyzeHeadless C:/lid-ghidra lidproj2 -process BrgGame-Steam.noexc.exe -noanalysis -readOnly -postScript X.java`.
+  `analyzeHeadless <ghidra-work> lidproj2 -process BrgGame-Steam.noexc.exe -noanalysis -readOnly -postScript X.java`.
 - Import crashed on PE exception dir (ExceptionDataDirectory.markup). Workaround: analysis copy
-  `C:\lid-ghidra\BrgGame-Steam.noexc.exe` with data-dir[3] (Exception, file off 0x210) zeroed. Project lidproj2.
+  `<ghidra-work>\BrgGame-Steam.noexc.exe` with data-dir[3] (Exception, file off 0x210) zeroed. Project lidproj2.
 - UE3 native lookup tables = {char* name, void* func} pairs. Resolved:
   ShopLimitedItems execAddItem -> FUN_14104aa80 (UI list), HUD execAddParts -> FUN_140af7480 (UI msg),
   AddPartsToCell -> FUN_141070b70 (level gen), ItemStore execShowStore -> FUN_141089d20, Database execGetItemPart
@@ -167,8 +167,8 @@ with params; (3) test one item, then icon grid.
 
 ## UnrealScript RE (2026-10-10) — LIVE SPAWN RECIPE FOUND
 - BrgGame.upk is LZO-compressed (CompressionFlags=2, 287 chunks). Decompressed with own tool
-  `C:\lid-ghidra\uedump` (`dotnet bin/out/uedump.dll decompress <in> <out>`; lzo.net) -> BrgGame.decomp.upk (365 MB).
-  UELib 1.13.7 then decompiles: 173,678 exports, 24,462 functions. Dumps in C:\lid-ghidra\uedump\out*.
+  `<ghidra-work>\uedump` (`dotnet bin/out/uedump.dll decompress <in> <out>`; lzo.net) -> BrgGame.decomp.upk (365 MB).
+  UELib 1.13.7 then decompiles: 173,678 exports, 24,462 functions. Dumps in <ghidra-work>\uedump\out*.
 - Inventory API: `BrgCommonPawn_CustomCharaNative.DeathBag_AddPart(EBrgLocalItemType type, optional BrgDbPsPart,
   ..., optional int inTargetStockIndex=-1, optional bool inAddQuickUseHolder, inIsBuy, inIsPickup, inIsForce)`
   (native event) and `DeathBag_AddItem(BrgLocalItemInfo, ...)`.
@@ -261,14 +261,14 @@ OPEN: (1) does the debug-eptid part persist across save/reload? (2) what was dro
   LZO (flags=2). Each holds 1 `Texture2D TX_UI_Image_<ID>`, **inline** (not TFC), 1 mip (TMGS_NoMipmaps), **108x132**,
   `PF_A8R8G8B8` (BGRA in memory) x1018 + `PF_DXT5` x14 (*_TOPS_031/032/131/132). Group TEXTUREGROUP_UI, SRGB=false.
   Exceptions: WP000_001_L/_R and PT_NONE_* hold 3 textures (288x144 + _F/_M 108x132); PT_ORB is 288x144.
-- **umodel (build 1590, 2023-07-07, `C:\lid-tools\umodel\`) FAILS** on these: "Serializing behind stopper" in
+- **umodel (build 1590, 2023-07-07, `<tools>\umodel\`) FAILS** on these: "Serializing behind stopper" in
   FByteBulkData. Cause: **Brg FByteBulkData header = 24 bytes: flags u32, elementCount i32, sizeOnDisk i64,
   offsetInFile i64** (stock UE3 = 32-bit size/offset). Applies to any Brg asset with bulk data (meshes/sounds too).
-- Extractor = own: `C:\lid-ghidra\uedump` `icons` command (Icons.cs: in-memory LZO decompress, name/import/export
+- Extractor = own: `<ghidra-work>\uedump` `icons` command (Icons.cs: in-memory LZO decompress, name/import/export
   tables, Texture2D tagged props, 64-bit bulk, BGRA/DXT1/3/5 decode, minimal PNG writer):
-  `dotnet C:\lid-ghidra\uedump\bin\out\uedump.dll icons <CookedPCConsole> C:\lid-tools\icons_raw "UI_Icon_PT_*.upk"`
+  `dotnet <ghidra-work>\uedump\bin\out\uedump.dll icons <CookedPCConsole> <tools>\icons_raw "UI_Icon_PT_*.upk"`
   -> 1032 PNGs in ~2 s, 0 failures, log `_extract_log.tsv`. Build: `dotnet build -c Release -o bin/out`.
-- Index/atlas: `C:\Python314\python.exe -I tools\build_item_index.py` -> `assets\icons_atlas.png` (2560x1664, 1004
+- Index/atlas: `python -I tools\build_item_index.py` -> `assets\icons_atlas.png` (2560x1664, 1004
   cells 64x64, 40 cols), `assets\items.tsv` (1355 rows, 1323 with icon), `assets\README.txt`. Deterministic output.
 - Names: `master_part.name` = "<sct>.<txtid>" -> `master_text(sct, id, lang='int')` (id alone is ambiguous: same
   TXT id also used by RAGEMOVE_NAME/DES, WEAPON_CTGRY). 12 parts have no text; PT_NONE_* are named "None" (skipped).

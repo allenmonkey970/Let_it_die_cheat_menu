@@ -1,7 +1,11 @@
 # Deploy the overlay into the game: dinput8.dll + lid_mod\ (tools, item catalog). Game must be closed.
+# Usage: .\deploy.ps1 -Game "D:\Games\LET IT DIE"   (or set the LID_GAME environment variable)
+param([string]$Game = $env:LID_GAME)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
-$win64 = 'C:\Users\antho\Downloads\LET.IT.DIE-SteamRIP.com\LET.IT.DIE\Binaries\Win64'
+if (-not $Game) { throw 'Pass -Game <LET IT DIE folder> or set LID_GAME.' }
+$win64 = Join-Path $Game 'Binaries\Win64'
+if (-not (Test-Path (Join-Path $win64 'BrgGame-Steam.exe'))) { throw "BrgGame-Steam.exe not found under $win64" }
 $mod = Join-Path $win64 'lid_mod'
 
 if (Get-Process BrgGame-Steam -ErrorAction SilentlyContinue) { throw 'LET IT DIE is running - close it first.' }

@@ -13,7 +13,6 @@ import glob, os, sqlite3, subprocess, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lid_save import backup, load_json, save_json  # noqa: E402
 
-DEFAULT_GAME = r"C:\Users\antho\Downloads\LET.IT.DIE-SteamRIP.com\LET.IT.DIE"
 STATS = ["hp", "str", "dex", "vit", "stm", "luk"]
 
 
@@ -93,7 +92,10 @@ def max_fighters(j, db, sel):
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ("list", "max"):
         print(__doc__); return 1
-    save, dbp = game_paths(os.environ.get("LID_GAME", DEFAULT_GAME))
+    game = os.environ.get("LID_GAME")
+    if not game:
+        print("set LID_GAME to your LET IT DIE folder"); return 1
+    save, dbp = game_paths(game)
     ver, _, j = load_json(save)
     db = open_masters(dbp)
     if sys.argv[1] == "list":

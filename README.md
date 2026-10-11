@@ -43,10 +43,10 @@ Press **Insert** in game to open or close the menu.
 1. Build: run `build.bat`. It produces `build\dinput8.dll`.
 2. Item catalog (optional; the Items tab needs it):
    - Export the `UI_Icon_*` textures from your install.
-   - Run `python tools\build_item_index.py`. It writes `assets\items.tsv` and `assets\icons_atlas.png`.
-3. Install: close the game and run `deploy.ps1`.
+   - Run `python tools\build_item_index.py --game "<your LET IT DIE folder>"`. It writes `assets\items.tsv` and
+     `assets\icons_atlas.png`.
+3. Install: close the game and run `.\deploy.ps1 -Game "<your LET IT DIE folder>"`.
    - It copies `dinput8.dll` next to `BrgGame-Steam.exe` (`Binaries\Win64`), plus `lid_mod\tools\*.py` and the catalog.
-   - The game path is set at the top of the script.
 4. Uninstall: delete `Binaries\Win64\dinput8.dll` and `Binaries\Win64\lid_mod\`.
 
 ## Safety
@@ -57,7 +57,8 @@ Press **Insert** in game to open or close the menu.
 ## Repository notes
 - **Not included:** game files and extracted assets (icons, item names). They are generated locally from your own
   install.
-- **Hard-coded paths to edit:** the game folder in `deploy.ps1` and `rpc.sh` (or set `LID_GAME`).
+- **Game folder:** the scripts take it from the `LID_GAME` environment variable (or `deploy.ps1 -Game`,
+  `build_item_index.py --game`). Nothing is hard-coded.
 
 ## Credits
 - [Dear ImGui](https://github.com/ocornut/imgui) (MIT) and [MinHook](https://github.com/TsudaKageyu/minhook)
