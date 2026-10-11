@@ -14,7 +14,7 @@ set MINHOOK=third_party\minhook\src\buffer.c third_party\minhook\src\hook.c thir
 
 cl /nologo /LD /O2 /EHsc /MT /DNDEBUG /Fobuild\ ^
    %INC% ^
-   src\dllmain.cpp src\scanner.cpp src\ue3.cpp src\settings.cpp src\items.cpp src\savequeue.cpp ^
+   src\dllmain.cpp src\rpc.cpp src\ue3.cpp src\settings.cpp src\items.cpp src\savequeue.cpp ^
    %IMGUI% %BACKENDS% %MINHOOK% ^
    /link /DEF:src\exports.def /OUT:build\dinput8.dll ^
    d3d9.lib user32.lib gdi32.lib dwmapi.lib windowscodecs.lib ole32.lib

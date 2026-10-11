@@ -56,7 +56,7 @@ Press **Insert** in game to open or close the menu.
 ## Repository notes
 - **Not included:** game files and extracted assets (icons, item names). They are generated locally from your own
   install.
-- **Hard-coded paths to edit:** `src/scanner.cpp` (`kDir`, the developer RPC folder), `rpc.sh` and `deploy.ps1`.
+- **Hard-coded paths to edit:** the game folder in `deploy.ps1` and `rpc.sh` (or set `LID_GAME`).
 
 ## Credits
 - [Dear ImGui](https://github.com/ocornut/imgui) (MIT) and [MinHook](https://github.com/TsudaKageyu/minhook)

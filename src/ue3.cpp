@@ -590,17 +590,6 @@ namespace ue3 {
         return b;
     }
 
-    // Resolve vtable slot `off` of the live instance of class `cls` to an RVA (for static analysis in Ghidra).
-    std::string VSlot(const char* cls, int off) {
-        uintptr_t obj = FindInstance(cls);
-        uintptr_t vt = 0, fn = 0;
-        if (obj) { ReadPtr(obj, &vt); if (vt) ReadPtr(vt + off, &fn); }
-        char b[256];
-        _snprintf_s(b, sizeof b, _TRUNCATE, "obj=%llX vtable_rva=%llX slot+%X -> rva %llX",
-                    (unsigned long long)obj, (unsigned long long)(vt ? vt - gBase : 0), off,
-                    (unsigned long long)(fn ? fn - gBase : 0));
-        return b;
-    }
     std::string Status() { std::lock_guard<std::mutex> lk(gStatusMu); return gStatus; }
     std::string Diag() {
         char b[512];

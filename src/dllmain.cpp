@@ -26,7 +26,7 @@
 #include "backends/imgui_impl_win32.h"
 #include "items.h"
 #include "savequeue.h"
-#include "scanner.h"
+#include "rpc.h"
 #include "settings.h"
 #include "ue3.h"
 
@@ -716,7 +716,6 @@ static void TabSettings() {
         ImGui::TextWrapped("%s", ue3::Diag().c_str());
         ImGui::TextWrapped("%s", g_diStatus.c_str());
         ImGui::TextWrapped("%s", InputDiag().c_str());
-        ImGui::TextWrapped("Scanner: %s (%d frozen)", Scanner_LastStatus(), Scanner_FreezeCount());
     }
 }
 
@@ -867,7 +866,7 @@ static bool InstallHooks() {
 
 static DWORD WINAPI Worker(LPVOID) {
     settings::Load();
-    Scanner_Start();               // after Load, so an early RPC cannot save defaults over the user's ini
+    Rpc_Start();                   // after Load, so an early RPC cannot save defaults over the user's ini
     items::LoadFiles();            // TSV + PNG decode here, texture upload later on the render thread
     savequeue::StartHelper();      // applies queued save edits after the game exits
     // d3d9.dll is statically imported, so it is already loaded; small wait lets the game create its device.

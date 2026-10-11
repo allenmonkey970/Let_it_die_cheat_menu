@@ -12,7 +12,6 @@ namespace settings {
     };
     Values& Get();
     void Load();                           // call once at startup (worker thread)
-    void Save();                           // call after any change
     const std::wstring& ModDir();          // ...\Binaries\Win64\lid_mod (created if missing)
 
     // Single source of truth for cheat toggles (menu, RPC, startup): updates ue3 + the ini.

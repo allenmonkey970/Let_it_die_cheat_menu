@@ -27,7 +27,6 @@ namespace ue3 {
     bool Ready();                           // cheat targets resolved
     bool Unavailable();                     // gave up: targets missing in this build
     std::string CheatStats();
-    std::string VSlot(const char* cls, int off);
     std::string Status();                   // human-readable state for the overlay / RPC
     std::string Diag();
 }
