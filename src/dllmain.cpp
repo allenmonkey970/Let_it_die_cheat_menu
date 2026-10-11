@@ -191,6 +191,7 @@ using GDD_t = HRESULT(WINAPI*)(void*, DWORD, LPDIDEVICEOBJECTDATA, LPDWORD, DWOR
 static GDS_t oGDS[2] = {};
 static GDD_t oGDD[2] = {};
 static std::string g_diStatus = "DirectInput: not hooked";
+static std::atomic<long> g_cntDiOther{ 0 };
 static std::atomic<long> g_cntDiState{ 0 }, g_cntDiData{ 0 }, g_cntDiBlocked{ 0 }, g_cntCursorGet{ 0 }, g_cntCursorSet{ 0 };
 
 enum DevKind { DEV_OTHER = 0, DEV_MOUSE = 1, DEV_KEYBOARD = 2 };
@@ -222,19 +223,21 @@ template <int I> static HRESULT WINAPI hkGDS(void* self, DWORD cb, LPVOID data) 
     return hr;
 }
 
-// Buffered input: drop presses and motion, keep releases (high bit of dwData clear on a key/button).
+// Buffered input: drop presses and motion, keep only events whose value is 0 - key/button releases (so nothing
+// stays stuck down) and zero motion. Offsets can't tell axes from buttons: UE3 sets its own mouse data format,
+// whose axis offsets are not the standard DIMOFS_* values (that once let mouse deltas through as "releases").
 template <int I> static HRESULT WINAPI hkGDD(void* self, DWORD cbObj, LPDIDEVICEOBJECTDATA rg, LPDWORD inOut, DWORD flags) {
     HRESULT hr = oGDD[I](self, cbObj, rg, inOut, flags);    // still drains the buffer
     ++g_cntDiData;
-    if (!g_menuOpen || FAILED(hr) || !inOut) return hr;
-    if (*inOut) ++g_cntDiBlocked;
+    if (!g_menuOpen || FAILED(hr) || !inOut || !*inOut) return hr;
     int kind = KindOf<I>(self);
-    if (kind == DEV_OTHER) return hr;
+    if (kind == DEV_OTHER) { ++g_cntDiOther; return hr; }
+    ++g_cntDiBlocked;
     if (!rg || cbObj < sizeof(DIDEVICEOBJECTDATA)) { *inOut = 0; return hr; }
     DWORD kept = 0;
     for (DWORD i = 0; i < *inOut; ++i) {
         auto* e = (LPDIDEVICEOBJECTDATA)((BYTE*)rg + (size_t)i * cbObj);
-        bool release = !(e->dwData & 0x80) && (kind == DEV_KEYBOARD || e->dwOfs >= DIMOFS_BUTTON0);
+        bool release = e->dwData == 0;
         if (release) { if (kept != i) memcpy((BYTE*)rg + (size_t)kept * cbObj, e, cbObj); ++kept; }
     }
     *inOut = kept;
@@ -280,8 +283,8 @@ static void HookCursor() {
 
 static std::string InputDiag() {
     char b[256];
-    _snprintf_s(b, sizeof b, _TRUNCATE, "Input reads seen: DI state %ld, DI buffered %ld, blocked %ld | cursor get blocked %ld, set blocked %ld",
-                g_cntDiState.load(), g_cntDiData.load(), g_cntDiBlocked.load(), g_cntCursorGet.load(), g_cntCursorSet.load());
+    _snprintf_s(b, sizeof b, _TRUNCATE, "Input reads seen: DI state %ld, DI buffered %ld, filtered %ld, other-device %ld | cursor get blocked %ld, set blocked %ld",
+                g_cntDiState.load(), g_cntDiData.load(), g_cntDiBlocked.load(), g_cntDiOther.load(), g_cntCursorGet.load(), g_cntCursorSet.load());
     return b;
 }
 
