@@ -46,6 +46,15 @@ namespace {
     // from the BrgUserData object the UI reads. So a UI-side SetUserBloodnium alone crashes the level-up.
     constexpr uintptr_t RVA_NATIVE_SOUL = 0xF89EF80;
     constexpr int OFF_SOUL_BLOODNIUM = 0xB4;
+    constexpr int OFF_SOUL_REPLICA_BLOODNIUM = 0xB8;   // -1, or a cap the spend path clamps to (>= the pool)
+    constexpr DWORD kExpectedPeTimestamp = 0x6A94FD6E; // the 5.0.1 build these offsets were taken from
+
+    bool IsExpectedBuild() {
+        uintptr_t base = (uintptr_t)GetModuleHandleW(nullptr);
+        auto dos = (IMAGE_DOS_HEADER*)base;
+        auto nt = (IMAGE_NT_HEADERS64*)(base + dos->e_lfanew);
+        return nt->FileHeader.TimeDateStamp == kExpectedPeTimestamp;
+    }
     constexpr DWORD kNoTickFallbackMs = 10000;
 
     using PE_t = void(__fastcall*)(void*, void*, void*, void*);
@@ -63,7 +72,7 @@ namespace {
 
     // ---- requests (game thread) ----
     enum Kind { PART_EQUIP, ADD_CURRENCY };
-    struct Request { Kind kind; std::wstring a, b; int n; };
+    struct Request { Kind kind; std::wstring a, b; int n; int amount; };
     std::mutex gMu;
     std::deque<Request> gQueue;
     std::atomic<bool> gHaveWork{ false };       // queue non-empty or resolve pending: checked before any lock
@@ -104,7 +113,6 @@ namespace {
         { "Death Metals",   "GetMedal",         "SetMedal",         nullptr,              99999999, false, false },
         { "Bloodnium",      "GetUserBloodnium", "SetUserBloodnium", "GetBloodniumLimit",  999999,   false, false },
         { "TDM Points",     "GetTdmPoint",      "SetTdmPoint",      nullptr,              99999999, false, false },
-        { "Bloodnium",      "GetBloodnium",     "AddBloodnium",     "GetBloodniumLimit",  999999,   true,  true  },
     };
     struct CurrencyFns { uintptr_t get, set, limit; };
     CurrencyFns gCurFns[ue3::CUR_COUNT] = {};
@@ -425,7 +433,7 @@ namespace {
         if (r.n < 0 || r.n >= ue3::CUR_COUNT) return;
         const CurrencySpec& cs = kCurrencies[r.n];
         const CurrencyFns& fn = gCurFns[r.n];
-        int amount = _wtoi(r.a.c_str());
+        int amount = r.amount;
         uintptr_t ud = LiveUserData(pc);
         if (!fn.get || !fn.set || !ud) {
             SetStatus("%s failed: %s", cs.label, ud ? "game function not found" : "game world not ready");
@@ -435,16 +443,29 @@ namespace {
         if (!CallGetInt(ud, fn.get, cs.perFighter, &before)) { SetStatus("%s FAULTED - cheats paused, save & restart", cs.label); return; }
         if (fn.limit) {
             int l = 0;
-            if (CallGetInt(ud, fn.limit, false, &l) && l > 0) limit = l;
+            if (!CallGetInt(ud, fn.limit, false, &l)) { SetStatus("%s FAULTED - cheats paused, save & restart", cs.label); return; }
+            if (l > 0) limit = l;
+        }
+        if (amount <= 0) { SetStatus("%s: nothing to add", cs.label); return; }
+        if (limit > 0 && before >= limit) {     // never lower a balance that is already at/over the limit
+            SetStatus("%s is already at the game limit (%d / %d)", cs.label, before, limit);
+            return;
         }
         // Bloodnium: the native soul field must hold exactly what the game just reported, which proves the offset
         // before we write it.
         int nativeBefore = INT_MIN;
         bool nativeOk = false;
-        if (r.n == ue3::CUR_BLOODNIUM_ACCOUNT) {
-            nativeOk = ReadI32(gBase + RVA_NATIVE_SOUL + OFF_SOUL_BLOODNIUM, &nativeBefore) && nativeBefore == before;
+        if (r.n == ue3::CUR_BLOODNIUM) {
+            // Proof that soul+0xB4 is the pool: right exe build, value equal to what the game reports, and the
+            // neighbouring replica cap is -1 or >= the pool (a random zeroed global fails at least one of these).
+            int replica = 0;
+            nativeOk = IsExpectedBuild() &&
+                       ReadI32(gBase + RVA_NATIVE_SOUL + OFF_SOUL_BLOODNIUM, &nativeBefore) && nativeBefore == before &&
+                       ReadI32(gBase + RVA_NATIVE_SOUL + OFF_SOUL_REPLICA_BLOODNIUM, &replica) &&
+                       (replica == -1 || replica >= nativeBefore);
             if (!nativeOk) {            // change nothing: a UI-only raise is exactly what crashes the level-up
-                SetStatus("Bloodnium NOT added: native record mismatch (game=%d, native=%d) - please report", before, nativeBefore);
+                SetStatus("Bloodnium NOT added: native record check failed (game=%d, native=%d) - please report",
+                          before, nativeBefore);
                 return;
             }
         }
@@ -456,9 +477,16 @@ namespace {
         if (cs.perFighter) *(int*)(parms + 4) = -1;
         if (!CallPE(ud, fn.set, parms)) { SetStatus("%s FAULTED - cheats paused, save & restart", cs.label); return; }
         int after = before;
-        CallGetInt(ud, fn.get, cs.perFighter, &after);
-        if (r.n == ue3::CUR_BLOODNIUM_ACCOUNT)            // verified above: mirror into the native store
-            WriteI32(gBase + RVA_NATIVE_SOUL + OFF_SOUL_BLOODNIUM, after);
+        if (!CallGetInt(ud, fn.get, cs.perFighter, &after)) { SetStatus("%s FAULTED - cheats paused, save & restart", cs.label); return; }
+        if (r.n == ue3::CUR_BLOODNIUM) {        // verified above: mirror into the native store, or undo the UI raise
+            if (after != (int)want || !WriteI32(gBase + RVA_NATIVE_SOUL + OFF_SOUL_BLOODNIUM, after)) {
+                alignas(16) unsigned char undo[kParmBytes] = {};
+                *(int*)undo = before;
+                CallPE(ud, fn.set, undo);
+                SetStatus("Bloodnium NOT added: could not update the native record (reverted)");
+                return;
+            }
+        }
         if (limit > 0) SetStatus("%s: %d -> %d (game limit %d)", cs.label, before, after, limit);
         else           SetStatus("%s: %d -> %d", cs.label, before, after);
     }
@@ -535,14 +563,15 @@ namespace ue3 {
             SetStatus("try-on refused: bad slot or part id");
             return false;
         }
-        Enqueue({ PART_EQUIP, site, ptid, 0 }, "try-on");
+        Enqueue({ PART_EQUIP, site, ptid, 0, 0 }, "try-on");
         return true;
     }
     void QueueAddCurrency(Currency c, int amount) {
         if (c < 0 || c >= CUR_COUNT) return;
-        Enqueue({ ADD_CURRENCY, std::to_wstring(amount), L"", (int)c }, kCurrencies[c].label);
+        Enqueue({ ADD_CURRENCY, L"", L"", (int)c, amount }, kCurrencies[c].label);
     }
     const char* CurrencyName(Currency c) { return (c >= 0 && c < CUR_COUNT) ? kCurrencies[c].label : "?"; }
+    static_assert(sizeof(kCurrencies) / sizeof(kCurrencies[0]) == CUR_COUNT, "currency table out of sync");
     bool CurrencyAvailable(Currency c) { return c >= 0 && c < CUR_COUNT && gCurFns[c].get && gCurFns[c].set; }
 
     void SetCheat(Cheat c, bool on) {
@@ -552,6 +581,7 @@ namespace ue3 {
     bool GetCheat(Cheat c) { return (gCheatMask & c) != 0; }
     bool Faulted() { return gFaulted; }
     bool Ready() { return gResolved; }
+    bool Scanned() { return gScanned; }
     bool Unavailable() { return gGaveUp; }
     std::string CheatStats() {
         char b[200];

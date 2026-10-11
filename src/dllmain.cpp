@@ -237,7 +237,7 @@ template <int I> static HRESULT WINAPI hkGDD(void* self, DWORD cbObj, LPDIDEVICE
     DWORD kept = 0;
     for (DWORD i = 0; i < *inOut; ++i) {
         auto* e = (LPDIDEVICEOBJECTDATA)((BYTE*)rg + (size_t)i * cbObj);
-        bool release = e->dwData == 0;
+        bool release = kind == DEV_KEYBOARD ? (e->dwData & 0x80) == 0 : e->dwData == 0;
         if (release) { if (kept != i) memcpy((BYTE*)rg + (size_t)kept * cbObj, e, cbObj); ++kept; }
     }
     *inOut = kept;
@@ -508,7 +508,7 @@ static void TabCheats() {
         { ue3::CUR_BANK,       "Kill Coins stored in your Buffalo Bank" },
         { ue3::CUR_TANK,       "SPLithium stored in your SPLithium Tank" },
         { ue3::CUR_DEATHMETAL, "Premium currency" },
-        { ue3::CUR_BLOODNIUM_ACCOUNT, "Upgrades and the Bloodnium shop (max 999,999)" },
+        { ue3::CUR_BLOODNIUM,  "Upgrades and the Bloodnium shop (max 999,999)" },
         { ue3::CUR_TDM,        "Tokyo Death Metro points" },
     };
     if (ImGui::BeginTable("currency", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
@@ -526,8 +526,11 @@ static void TabCheats() {
             ImGui::TableNextColumn();
             ImGui::PushID((int)row.c);
             char label[48];
-            snprintf(label, sizeof label, "+%d", amount);
+            bool missing = ue3::Scanned() && !ue3::CurrencyAvailable(row.c);
+            snprintf(label, sizeof label, missing ? "not found" : "+%d", amount);
+            ImGui::BeginDisabled(missing);
             if (ImGui::Button(label, ImVec2(-1, 0))) ue3::QueueAddCurrency(row.c, amount);
+            ImGui::EndDisabled();
             ImGui::PopID();
         }
         ImGui::EndTable();
@@ -767,7 +770,21 @@ static HRESULT APIENTRY hkEndScene(IDirect3DDevice9* dev) {
     // Toggle on INSERT edge.
     bool insert = (GetAsyncKeyState(VK_INSERT) & 0x8000) != 0;
     bool justOpened = false;
-    if (insert && !g_prevInsert) { g_menuOpen = !g_menuOpen; justOpened = g_menuOpen; }
+    if (insert && !g_prevInsert) {
+        if (!g_menuOpen) {
+            POINT pt{};
+            if (oGetCursorPos) oGetCursorPos(&pt); else GetCursorPos(&pt);
+            g_openCursorX = pt.x; g_openCursorY = pt.y;          // before g_menuOpen: the game never sees (0,0)
+            g_menuOpen = true; justOpened = true;
+        } else {
+            g_menuOpen = false;
+            // Put the cursor back where the game left it, so its next GetCursorPos delta is zero (no camera snap).
+            long gx = g_gameCursorX, gy = g_gameCursorY;
+            if (oSetCursorPos) {
+                if (gx != LONG_MIN) oSetCursorPos(gx, gy); else oSetCursorPos(g_openCursorX, g_openCursorY);
+            }
+        }
+    }
     g_prevInsert = insert;
 
     if (!g_imguiInit) {
@@ -793,11 +810,7 @@ static HRESULT APIENTRY hkEndScene(IDirect3DDevice9* dev) {
     { std::lock_guard<std::mutex> lk(g_msgMu); msgs.swap(g_msgs); }
 
     if (g_menuOpen) {
-        if (justOpened) {
-            ResetInput();
-            POINT pt{}; tOverlayCursor = true; GetCursorPos(&pt); tOverlayCursor = false;
-            g_openCursorX = pt.x; g_openCursorY = pt.y;
-        }
+        if (justOpened) ResetInput();
         for (auto& m : msgs) FeedInput(m);
         items::EnsureTexture(dev);
         ImGui_ImplDX9_NewFrame();
