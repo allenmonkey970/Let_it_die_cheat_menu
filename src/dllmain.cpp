@@ -507,7 +507,6 @@ static void TabCheats() {
         { ue3::CUR_SPLITHIUM,  "Carried by your current fighter" },
         { ue3::CUR_BANK,       "Kill Coins stored in your Buffalo Bank" },
         { ue3::CUR_TANK,       "SPLithium stored in your SPLithium Tank" },
-        { ue3::CUR_DEATHMETAL, "Premium currency" },
         { ue3::CUR_BLOODNIUM,  "Upgrades and the Bloodnium shop (max 999,999)" },
         { ue3::CUR_TDM,        "Tokyo Death Metro points" },
     };

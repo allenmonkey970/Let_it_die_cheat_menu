@@ -13,7 +13,7 @@ namespace ue3 {
     // Bloodnium: the native stat-distribute check spends from the native save-store soul record (+0xB4) plus the
     // current chara record, not from BrgUserData, so the Bloodnium add also writes soul+0xB4 (after verifying it).
     // A UI-only raise lets the stat screen allow an upgrade the native check then rejects with an assert (crash).
-    enum Currency { CUR_KILLCOINS, CUR_SPLITHIUM, CUR_BANK, CUR_TANK, CUR_DEATHMETAL, CUR_BLOODNIUM, CUR_TDM, CUR_COUNT };
+    enum Currency { CUR_KILLCOINS, CUR_SPLITHIUM, CUR_BANK, CUR_TANK, CUR_BLOODNIUM, CUR_TDM, CUR_COUNT };
     void QueueAddCurrency(Currency c, int amount);
     const char* CurrencyName(Currency c);
     bool CurrencyAvailable(Currency c);     // its game functions were found

@@ -3,8 +3,8 @@
 # Usage:
 #   rpc.sh ue3_status | ue3_diag | input_diag
 #   rpc.sh inf_dur|inf_ammo|inf_stamina [on|off]     (no value = query)
-#   rpc.sh add_currency <which 0-6> <amount>          (0 Kill Coins, 1 SPLithium, 2 Bank, 3 Tank,
-#                                                      4 Death Metals, 5 Bloodnium, 6 TDM Points)
+#   rpc.sh add_currency <which 0-5> <amount>          (0 Kill Coins, 1 SPLithium, 2 Bank, 3 Tank,
+#                                                      4 Bloodnium, 5 TDM Points)
 #   rpc.sh spawn_part <PT_id> [Head|Arm_R|Arm_L|Body|Legs]   (temporary try-on)
 GAME="${LID_GAME:-C:/Users/antho/Downloads/LET.IT.DIE-SteamRIP.com/LET.IT.DIE}"
 RPC="$GAME/Binaries/Win64/lid_mod/rpc"

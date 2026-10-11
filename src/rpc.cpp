@@ -80,7 +80,7 @@ namespace {
                    "\nbridge=" + ue3::Status() + "\n";
         }
         if (op == "add_currency") {
-            // which = 0 Kill Coins, 1 SPLithium, 2 Bank, 3 Tank, 4 Death Metals, 5 Bloodnium, 6 TDM
+            // which = 0 Kill Coins, 1 SPLithium, 2 Bank, 3 Tank, 4 Bloodnium, 5 TDM Points
             std::string sv = GetVal(cmd, "value"), sw = GetVal(cmd, "which");
             int which = IsNum(sw) ? atoi(sw.c_str()) : -1;
             int amt = IsNum(sv) ? atoi(sv.c_str()) : 0;

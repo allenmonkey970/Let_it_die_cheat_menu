@@ -110,7 +110,6 @@ namespace {
         { "SPLithium",      "GetSpirit",        "AddSpirit",        nullptr,              0,        true,  true  },
         { "Bank funds",     "GetSafeMoney",     "SetSafeMoney",     "GetSafeLimit",       0,        false, false },
         { "SPLithium Tank", "GetSafeSpirit",    "SetSafeSpirit",    "GetSpiritTankLimit", 0,        false, false },
-        { "Death Metals",   "GetMedal",         "SetMedal",         nullptr,              99999999, false, false },
         { "Bloodnium",      "GetUserBloodnium", "SetUserBloodnium", "GetBloodniumLimit",  999999,   false, false },
         { "TDM Points",     "GetTdmPoint",      "SetTdmPoint",      nullptr,              99999999, false, false },
     };

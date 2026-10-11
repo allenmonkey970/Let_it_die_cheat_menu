@@ -10,7 +10,8 @@ Press **Insert** in game to open or close the menu.
   - Infinite durability (weapons and armor).
   - Infinite ammo.
   - Infinite stamina.
-  - +100,000 Kill Coins / SPLithium. The game caps both at 500,000.
+  - Add any amount of Kill Coins, SPLithium, Bank funds, SPLithium Tank, Bloodnium or TDM Points, capped at the
+    game's own limits (Bank and Tank limits grow with their level).
 - **Items tab:** a searchable picker with icons and names for weapons, armor and R&D materials.
   - **Send to Coin Locker** is permanent. The item is written into your save after you quit and is waiting on your next
     launch.
