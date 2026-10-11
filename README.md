@@ -61,5 +61,4 @@ Press **Insert** in game to open or close the menu.
 ## Credits
 - [Dear ImGui](https://github.com/ocornut/imgui) (MIT) and [MinHook](https://github.com/TsudaKageyu/minhook)
   (BSD-2-Clause). Pulled in as submodules under `third_party/`, with their own licenses.
-- Built with Claude Code (Anthropic) using AI-assisted reverse engineering.
 - LET IT DIE is a trademark of its owners. This project is not affiliated with them.
