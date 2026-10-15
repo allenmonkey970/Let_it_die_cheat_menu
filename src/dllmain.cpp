@@ -684,9 +684,30 @@ static void TabItems() {
 }
 
 static void TabFighter() {
+    static int grade = 6;
+    const std::string g = std::to_string(grade);
+
+    Heading("Grade");
+    Hint("The game caps a fighter's stats by grade, so raise the grade to lift the ceiling. This adds no "
+         "stats by itself - max the stats afterwards. A grade is never lowered.");
+    ImGui::SetNextItemWidth(220);
+    ImGui::SliderInt("##grade", &grade, 1, 6, "Grade %d", ImGuiSliderFlags_AlwaysClamp);
+    grade = (std::max)(1, (std::min)(grade, 6));          // ctrl+click types a raw value
+    ImGui::SameLine();
+    static const int kTypicalLevel[6] = { 33, 57, 87, 118, 149, 281 };   // exact value varies by fighter type
+    ImGui::TextColored(kMuted, "max level ~%d", kTypicalLevel[grade - 1]);
+    ImGui::BeginDisabled(!savequeue::Ready());
+    if (ImGui::Button("Raise current fighter", ImVec2(220, 32)))
+        savequeue::Add({ "fighter_grade", "current:" + g, "Grade " + g + ": current fighter" });
+    ImGui::SameLine();
+    if (ImGui::Button("Raise every fighter", ImVec2(220, 32)))
+        savequeue::Add({ "fighter_grade", "all:" + g, "Grade " + g + ": every fighter" });
+    ImGui::EndDisabled();
+
     Heading("Max stats");
-    Hint("Raises HP, STR, DEX, VIT, STM and LUK to the highest your fighter's type allows, and the level to "
-         "match. Done to the save after you quit (live XP crashes the stat screen, so this is the safe way).");
+    Hint("Fills HP, STR, DEX, VIT, STM and LUK, plus the skill, bag and rage slots, up to the fighter's "
+         "CURRENT grade, with the level to match. Done to the save after you quit (live XP crashes the "
+         "stat screen, so this is the safe way).");
     ImGui::BeginDisabled(!savequeue::Ready());
     if (ImGui::Button("Max current fighter", ImVec2(220, 32)))
         savequeue::Add({ "fighter_max", "current", "Max stats: current fighter" });

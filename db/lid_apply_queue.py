@@ -5,14 +5,15 @@ Started by dinput8.dll at launch (pythonw, no window):
 It waits for that process to end (the game writes its save on exit), then applies lid_mod\\save_queue.txt:
   locker\\t<part id>\\t<label>        -> new part record (owner COIN_LOCKER) + the first empty soul.cl slot
   locker_item\\t<item id>\\t<label>   -> new item record (R&D material) + the first empty slot (type 3)
-  fighter_max\\t<current|all>\\t<label> -> lid_fighter.max_fighters
+  fighter_max\\t<current|all>\\t<label>   -> lid_fighter.max_fighters (stats, current grade)
+  fighter_grade\\t<current|all>:<n>\\t<label> -> lid_fighter.set_grade
 The save is backed up first and written atomically. Results go to lid_mod\\save_queue_result.txt, which the
 overlay shows on the next launch. Can also be run by hand with the game closed: --pid 0.
 """
 import argparse, ctypes, os, sys, time, traceback, uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lid_fighter import game_paths, game_running, max_fighters, open_masters  # noqa: E402
+from lid_fighter import game_paths, game_running, max_fighters, open_masters, set_grade  # noqa: E402
 from lid_save import backup, load_json, save_json  # noqa: E402
 
 SYNCHRONIZE, INFINITE = 0x00100000, 0xFFFFFFFF
@@ -85,6 +86,12 @@ def deliver_to_locker(j, db, ptid, label, now):
     return True, False, f"{label}: delivered to Coin Locker slot {slot['slot'] + 1}"
 
 
+def order_queue(queue):
+    """A grade raise lifts the cap that a stat max fills to, so grades go first however they were
+    queued. Stable, so everything else keeps the order the player added it in."""
+    return sorted(queue, key=lambda e: e[0] != "fighter_grade")
+
+
 def deliver_item_to_locker(j, db, itemid, label, now):
     """R&D materials: same shape as the game's own item records (eid, gettime, itemid, owner) + a type-3 slot.
     Returns (ok, retry_later, message)."""
@@ -133,6 +140,7 @@ def apply(qpath, rpath, game_root, say):
     if game_running():
         say("game is running again - leaving the queue for the next exit"); return 0
 
+    queue = order_queue(queue)
     retry, results = [], []
     try:
         save, dbp = game_paths(game_root)
@@ -151,6 +159,11 @@ def apply(qpath, rpath, game_root, say):
                     changed |= ok
                 elif op == "fighter_max":
                     n, matched, msgs = max_fighters(j, db, arg)
+                    ok, msg = matched > 0, "; ".join(msgs)
+                    changed |= n > 0
+                elif op == "fighter_grade":
+                    sel, _, want = arg.partition(":")
+                    n, matched, msgs = set_grade(j, db, sel, want or "top")
                     ok, msg = matched > 0, "; ".join(msgs)
                     changed |= n > 0
                 else:

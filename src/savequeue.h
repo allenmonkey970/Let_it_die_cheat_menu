@@ -7,7 +7,8 @@
 #include <vector>
 
 namespace savequeue {
-    struct Entry { std::string op, arg, label; };   // op: "locker" (part id) | "locker_item" (R&D material id) | "fighter_max" (current|all)
+    struct Entry { std::string op, arg, label; };   // op: "locker" (part id) | "locker_item" (R&D material id)
+                                                    // | "fighter_max" (current|all) | "fighter_grade" (current|all:n)
     void StartHelper();                             // spawns its own thread; returns immediately
     bool Add(const Entry& e);                       // false until the queue is loaded (Ready)
     void Remove(size_t index);
