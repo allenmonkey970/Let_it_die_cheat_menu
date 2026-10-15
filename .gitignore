@@ -17,3 +17,7 @@ assets/*
 # Python
 __pycache__/
 *.pyc
+
+# Kept locally, not published
+MODLOG.md
+media/*.mp4

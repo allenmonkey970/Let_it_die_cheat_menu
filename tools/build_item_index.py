@@ -5,13 +5,13 @@ Run:  python -I tools\\build_item_index.py [--game DIR] [--icons DIR] [--out DIR
 Inputs (read-only):
   <game>\\BrgGame\\Content\\masters.db  (opened with ?mode=ro)
   <icons>\\<ICON_ID>.png               raw icons exported from BrgGame\\CookedPCConsole\\UI_Icon_<ICON_ID>_SF.upk
-                                       by `uedump icons` (see MODLOG "Item icons")
+                                       by `uedump icons`
 Outputs:
   <out>\\icons_atlas.png  RGBA, 64x64 cells, 40 columns, cell i at (i%40*64, i//40*64)
   <out>\\items.tsv        ptid name slot req_stat req_value icon rarity sort
   <out>\\README.txt
 
-Icon resolution (first hit wins), see README/MODLOG for rationale:
+Icon resolution (first hit wins):
   exact     <ptid>.png
   alias     hand-picked alias (Fists -> right-hand male fist texture of the multi-texture package)
   strip_G   "<id>_G" -> "<id>" (the _G parts use the identical 3D asset as their base part)
