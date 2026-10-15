@@ -22,7 +22,8 @@ Full-quality download: [`media/LET_IT_DIE_mod_menu.mp4`](media/LET_IT_DIE_mod_me
   - **Send to Coin Locker** is permanent. The item is written into your save after you quit and is waiting on your next
     launch.
   - **Try it on now** is a temporary live preview.
-- **Fighter tab:** max the stats of your current fighter, or every fighter. Applied to the save after you quit.
+- **Fighter tab:** raise a fighter's grade (grade sets the stat ceiling), then max the stats of your current
+  fighter or every fighter up to it. Applied to the save after you quit.
 - **Settings tab:** borderless window, a diagnostics panel, and settings remembered between launches.
 - While the menu is open, the game gets no mouse or keyboard input, and the menu draws its own cursor.
 
