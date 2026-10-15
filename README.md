@@ -9,7 +9,6 @@ Press **Insert** in game to open or close the menu.
 
 https://github.com/user-attachments/assets/6b4da0d6-ae3b-4032-9eea-d55e5192b7b8
 
-
 ## Features
 - **Cheats tab**
   - Infinite durability (weapons and armor).
@@ -21,8 +20,8 @@ https://github.com/user-attachments/assets/6b4da0d6-ae3b-4032-9eea-d55e5192b7b8
   - **Send to Coin Locker** is permanent. The item is written into your save after you quit and is waiting on your next
     launch.
   - **Try it on now** is a temporary live preview.
-- **Fighter tab:** raise a fighter's grade (grade sets the stat ceiling), then max the stats of your current
-  fighter or every fighter up to it. Applied to the save after you quit.
+- **Fighter tab:** raise a fighter's grade, then max the stats of your current fighter or every fighter up to
+  that grade's ceiling (grade 1 tops out at level 33, grade 6 at 281). Applied to the save after you quit.
 - **Settings tab:** borderless window, a diagnostics panel, and settings remembered between launches.
 - While the menu is open, the game gets no mouse or keyboard input, and the menu draws its own cursor.
 
@@ -30,9 +29,9 @@ https://github.com/user-attachments/assets/6b4da0d6-ae3b-4032-9eea-d55e5192b7b8
 - **Cheats:** the DLL hooks the engine's `ProcessEvent` and `ProcessInternal` (MinHook). When one of the game's
   decrement-only script functions runs for your fighter, the hook skips it: `*DurabilityDown`, `BulletConsumption` and
   `StaminaConsumption`.
-- **Permanent changes:** these are done to the save file with the game closed. The overlay queues them in
-  `lid_mod\save_queue.txt`. A small Python helper (`db/lid_apply_queue.py`) starts with the game, waits for it to exit,
-  backs up the save, and applies the queue atomically.
+- **Permanent changes** (locker items, grade, stats): these are done to the save file with the game closed. The
+  overlay queues them in `lid_mod\save_queue.txt`. A small Python helper (`db/lid_apply_queue.py`) starts with the
+  game, waits for it to exit, backs up the save, and applies the queue atomically.
 
 ## Requirements
 - Windows 10/11 x64, and the offline edition of LET IT DIE 5.0.1 (your own copy).
@@ -64,6 +63,9 @@ https://github.com/user-attachments/assets/6b4da0d6-ae3b-4032-9eea-d55e5192b7b8
   install.
 - **Game folder:** the scripts take it from the `LID_GAME` environment variable (or `deploy.ps1 -Game`,
   `build_item_index.py --game`). Nothing is hard-coded.
+
+## License
+GPL-3.0, see [`LICENSE`](LICENSE). The bundled submodules keep their own licenses.
 
 ## Credits
 - [Dear ImGui](https://github.com/ocornut/imgui) (MIT) and [MinHook](https://github.com/TsudaKageyu/minhook)
