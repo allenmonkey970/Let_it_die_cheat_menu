@@ -1,5 +1,5 @@
 #pragma once
-// Minimal UE3 bridge for LET IT DIE 5.0.1 (BrgGame-Steam.exe). Offsets from Ghidra (MODLOG.md).
+// Minimal UE3 bridge for LET IT DIE 5.0.1 (BrgGame-Steam.exe). Offsets were found with Ghidra.
 #include <string>
 
 namespace ue3 {

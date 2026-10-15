@@ -1,4 +1,4 @@
-// Minimal UE3 bridge for LET IT DIE 5.0.1. All offsets come from Ghidra (see MODLOG.md).
+// Minimal UE3 bridge for LET IT DIE 5.0.1. All offsets were found with Ghidra.
 //   ProcessEvent    = base + 0x10E770  void(UObject* this, UFunction* fn, void* parms, void* unused)
 //   ProcessInternal = base + 0x10EC70  void(UObject* this, FFrame& stack, void* result) - runs EVERY script
 //                     function body (CallFunction calls it directly for script->script calls).

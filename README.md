@@ -9,7 +9,6 @@ Press **Insert** in game to open or close the menu.
 
 https://github.com/user-attachments/assets/6b4da0d6-ae3b-4032-9eea-d55e5192b7b8
 
-Full-quality download: [`media/LET_IT_DIE_mod_menu.mp4`](media/LET_IT_DIE_mod_menu.mp4).
 
 ## Features
 - **Cheats tab**
@@ -34,7 +33,6 @@ Full-quality download: [`media/LET_IT_DIE_mod_menu.mp4`](media/LET_IT_DIE_mod_me
 - **Permanent changes:** these are done to the save file with the game closed. The overlay queues them in
   `lid_mod\save_queue.txt`. A small Python helper (`db/lid_apply_queue.py`) starts with the game, waits for it to exit,
   backs up the save, and applies the queue atomically.
-- **More detail:** see `MODLOG.md` for the reverse-engineering notes (offsets, save format, gotchas).
 
 ## Requirements
 - Windows 10/11 x64, and the offline edition of LET IT DIE 5.0.1 (your own copy).
